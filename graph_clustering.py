@@ -299,3 +299,40 @@ for i in range(0,len(edges)):
                 count = count + 1
                 
     similarity[i][20] = similarity[i][20]+100*count/num_of_feature
+
+
+#- calculate similarity average
+#- avg_similarity : percentage of contribution of feature to make an Edge
+
+avg_similarity = np.zeros((1,19))
+
+for i in range(0,19):
+    avg_similarity[0,i] = np.average(similarity[:,i+2])
+
+value = sum(avg_similarity[0,:])
+
+for j in range(0,19):
+    avg_similarity[0,j] = round(avg_similarity[0,j]/value,2)
+
+### calculate edge weight from avg_similarity[0,:]
+#- find TOP 5
+#- TOP 5 : education_type 42.61 / gender 25.29 / locale 19.11 / location 2.93 / education_school 2.04
+
+order = avg_similarity.argsort()
+rank = order.argsort()
+rank_of_avg_similarity = avg_similarity.shape[1]-rank
+
+#- Set weight with normalization
+r1 = np.where(rank_of_avg_similarity <= 5)[1][0]
+r2 = np.where(rank_of_avg_similarity <= 5)[1][1]
+r3 = np.where(rank_of_avg_similarity <= 5)[1][2]
+r4 = np.where(rank_of_avg_similarity <= 5)[1][3]
+r5 = np.where(rank_of_avg_similarity <= 5)[1][4]
+
+for i in range(0,len(edges)):
+    G.add_edge(similarity[i][0],similarity[i][1],
+               weight = (similarity[i,r1+2]* avg_similarity[0,r1]                         
+               + similarity[i,r2+2]*avg_similarity[0,r2]
+               + similarity[i,r3+2]*avg_similarity[0,r3]
+               + similarity[i,r4+2]*avg_similarity[0,r4]
+               + similarity[i,r5+2]*avg_similarity[0,r5])/100)
