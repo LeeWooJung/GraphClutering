@@ -70,6 +70,43 @@ for i in range(0,len(nodes)):
 #- Add edge
 G.add_edges_from(edges)
 
+### Find what detailed features that have more than 90% jaccard similarity
+simindex = np.zeros((2,1))
+for i in range(1,len(features[0])-1):
+    for j in range(i+1,len(features[0])):
+        
+        M01 = 0
+        M10 = 0
+        M11 = 0
+        for k in range(0,len(features[:,i])):
+            if features[:,i][k] == 0 and features[:,j][k] == 1:
+                M01 = M01 + 1
+            elif features[:,i][k] == 1 and features[:,j][k] == 0:
+                M10 = M10 + 1
+            elif features[:,i][k] == 1 and features[:,j][k] == 1:
+                M11 = M11 + 1
+        
+        sim = M11 / (M01 + M10 + M11)
+        if sim > 0.9:
+            print(feat_name[i] + " is similar with " + feat_name[j] + " and feature indexs are " +  str(i),str(j)
+                  + " and number of features is " + str(feat_name.count(feat_name[i])), str(feat_name.count(feat_name[j])))
+            
+            simindex = np.c_[simindex,np.array([i,j])]
+
+featurelist = ['birthday','education_concentration','education_degree','education_school',
+               'education_type','education_year','first_name','gender','hometown','languages',
+               'last_name','locale','location','name','work_employer','work_end_date','work_location',
+               'work_position','work_start_date']
+
+#- Then pop one column since these two columns are redundant
+for i in range(1,len(simindex[1,:])):
+    
+    if feat_name.count(feat_name[int(simindex[1,i])]) == 1:
+        index = featurelist.index(feat_name[int(simindex[1,i])])
+        featurelist.pop(index)
+    feat_name.pop(int(simindex[1,i]))
+    features = np.c_[features[:,:int(simindex[1,i])],features[:,int(simindex[1,i])+1:]]
+
 ### calculate jaccard similarity if there's an edge
 
 #- note : feature names are (19)
@@ -80,6 +117,31 @@ G.add_edges_from(edges)
 edges = list(G.edges)
 
 similarity = np.zeros((len(edges),2+19))
+nodesC2 = int(len(nodes)*(len(nodes)-1)/2)
+whole_similarity = np.zeros((nodesC2,2+19))
+
+k = 0
+for n1_index in range(0,len(nodes)):
+    for n2_index in range(n1_index+1,len(nodes)):
+        n1 = nodes[n1_index]
+        n2 = nodes[n2_index]
+        whole_similarity[k,0] = whole_similarity[k,0] + n1
+        whole_similarity[k,1] = whole_similarity[k,1] + n2
+
+        end = 1
+
+        for n in range(0,len(featurelist)):
+            count = 0
+            start = end
+            num_of_feature = feat_name.count(featurelist[n])
+            end = start + num_of_feature
+
+            for p in range(0,num_of_feature):
+                if features[n1_index,start+p] == 1 and features[n2_index,start+p] == 1:
+                    count = count + 1
+            whole_similarity[k,n+2] = whole_similarity[k,n+2] + 100*count/num_of_feature
+        
+        k = k + 1
 
 for i in range(0,len(edges)):
     
@@ -90,216 +152,19 @@ for i in range(0,len(edges)):
     N1_index = int(np.where(nodes == N1)[0])
     N2_index = int(np.where(nodes == N2)[0])
 
-    count = 0
-    start = 1
-    num_of_feature = feat_name.count('birthday')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
+    end = 1
+    for n in range(0, len(featurelist)):
+        count = 0
+        start = end
+        num_of_feature = feat_name.count(featurelist[n])
+        end = start + num_of_feature
+        
+        for j in range(0,num_of_feature):
+            if features[N1_index,start+j] == 1 and features[N2_index,start+j] == 1:
                 count = count + 1
-                
-    similarity[i][2] = similarity[i][2]+100*count/num_of_feature
-    
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('education_concentration')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][3] = similarity[i][3]+100*count/num_of_feature
 
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('education_degree')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][4] = similarity[i][4]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('education_school')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][5] = similarity[i][5]+100*count/num_of_feature
-    
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('education_type')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][6] = similarity[i][6]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('education_year')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][7] = similarity[i][7]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('first_name')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][8] = similarity[i][8]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('gender')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][9] = similarity[i][9]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('hometown')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][10] = similarity[i][10]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('languages')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][11] = similarity[i][11]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('last_name')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][12] = similarity[i][12]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('locale')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][13] = similarity[i][13]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('location')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][14] = similarity[i][14]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('name')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][15] = similarity[i][15]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('work_employer')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][16] = similarity[i][16]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('work_end_date')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][17] = similarity[i][17]+100*count/num_of_feature
-    
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('work_location')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][18] = similarity[i][18]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('work_position')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][19] = similarity[i][19]+100*count/num_of_feature
-
-    count = 0
-    start = end
-    num_of_feature = feat_name.count('work_start_date')
-    end = start + num_of_feature
-    for j in range(0,num_of_feature):
-        if features[N1_index,start+j] == 1:
-            if features[N2_index,start+j] == 1:
-                count = count + 1
-                
-    similarity[i][20] = similarity[i][20]+100*count/num_of_feature
-
+        similarity[i][n+2] = similarity[i][n+2] + 100*count/num_of_feature
+                   
 
 #- calculate similarity average
 #- avg_similarity : percentage of contribution of feature to make an Edge
