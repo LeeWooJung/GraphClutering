@@ -2,6 +2,7 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 from scipy import spatial
+from sklearn.preprocessing import scale
 
 
 ego414 = np.genfromtxt('414.featnames',dtype=str,delimiter="\n")
@@ -201,3 +202,71 @@ for i in range(0,len(edges)):
                + similarity[i,r3+2]*avg_similarity[0,r3]
                + similarity[i,r4+2]*avg_similarity[0,r4]
                + similarity[i,r5+2]*avg_similarity[0,r5])/100)
+
+
+#- calculate edge weight mean, deviation
+
+edgeweight_list = np.zeros((1,len(edges)))
+norm_list = np.zeros((1,len(edges)))
+
+index = 0
+for (u,v,weight) in G.edges.data('weight'):
+    edgeweight_list[0][index] = edgeweight_list[0][index] + weight
+    index = index + 1
+
+edgeweight_mean = np.mean(edgeweight_list[0])
+edgeweight_std = np.std(edgeweight_list[0])
+
+edgeweight_gaussian = scale(edgeweight_list[0])
+edgeweight_gaussian_mean = np.mean(edgeweight_gaussian)
+edgeweight_gaussian_std = np.std(edgeweight_gaussian)
+
+# Z > 0.52 means Upper 30% of edge weight
+elarge = [(u,v) for (u,v,d) in G.edges(data=True) if (d['weight'] - edgeweight_mean)/edgeweight_std > 0.52]
+elarge_weight = [d['weight'] for (u,v,d) in G.edges(data = True) if (d['weight'] - edgeweight_mean)/edgeweight_std > 0.52]
+esmall = [(u,v) for (u,v,d) in G.edges(data=True) if (d['weight'] - edgeweight_mean)/edgeweight_std <= 0.52]
+
+### if there is NO edge between node pairs, then calcuate "edge weight" value
+### if edge weight value is more higher then make an edge and add edge weight
+NoEdgelist_index = []
+simlist = []
+
+for i in range(0,len(similarity)):
+    simlist.append(list(similarity[i,0:2]))
+
+for j in range(0,len(whole_similarity)):
+    if list(whole_similarity[j,0:2]) not in simlist:
+        NoEdgelist_index.append(j)
+
+
+NoEdgeSimilarity = np.zeros((len(NoEdgelist_index),len(whole_similarity[0])))
+
+# Make array "NoEdgeSimilarity" which is similarity of node pair that has no edge
+for j in range(0,len(NoEdgelist_index)):
+    NoEdgeSimilarity[j,:] = whole_similarity[NoEdgelist_index[j],:]
+
+# Assume there exist all edges for NO edge node pair,
+# then calculate edge weight
+NoEdgeWeight = np.zeros((len(NoEdgelist_index),3))
+
+for k in range(0,len(NoEdgelist_index)):
+    NoEdgeWeight[k,0] = NoEdgeSimilarity[k,0]
+    NoEdgeWeight[k,1] = NoEdgeSimilarity[k,1]
+    NoEdgeWeight[k,2] = (NoEdgeSimilarity[k,r1+2]* avg_similarity[0,r1]                         
+               + NoEdgeSimilarity[k,r2+2]*avg_similarity[0,r2]
+               + NoEdgeSimilarity[k,r3+2]*avg_similarity[0,r3]
+               + NoEdgeSimilarity[k,r4+2]*avg_similarity[0,r4]
+               + NoEdgeSimilarity[k,r5+2]*avg_similarity[0,r5])/100
+
+
+# modify NoEdgeWeight value to Gaussian distribution
+# if their value is greater than 1.28 :: more than 90%, add edge and add edge weight to graph
+
+added_index = []
+for i in range(0,len(NoEdgelist_index)):
+    WeightCheck = (NoEdgeWeight[i,2] - edgeweight_mean)/edgeweight_std
+
+    if (WeightCheck - edgeweight_gaussian_mean)/edgeweight_gaussian_std > 1.28:
+        
+        G.add_edge(NoEdgeWeight[i,0],NoEdgeWeight[i,1], weight = NoEdgeWeight[i,2])
+        added_index.append(i)
