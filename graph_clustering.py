@@ -1,6 +1,8 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import pandas as pd
+from pandas import DataFrame
 from scipy import spatial
 from sklearn.preprocessing import scale
 
@@ -270,3 +272,44 @@ for i in range(0,len(NoEdgelist_index)):
         
         G.add_edge(NoEdgeWeight[i,0],NoEdgeWeight[i,1], weight = NoEdgeWeight[i,2])
         added_index.append(i)
+
+
+### make adjacency matrix
+adjacency_matrix = nx.adjacency_matrix(G)
+adjacency_matrix = adjacency_matrix.todense()
+adj_dataframe = pd.DataFrame(adjacency_matrix, index = nodes, columns = nodes)
+adj_dataframe.to_csv('ego414_adjacencymatrix.csv')
+
+### plot Graph
+
+added = np.zeros((len(added_index),3))
+for j in range(0,len(added_index)):
+    added[j,0] = NoEdgeWeight[added_index[j],0]
+    added[j,1] = NoEdgeWeight[added_index[j],1]
+    added[j,2] = NoEdgeWeight[added_index[j],2]
+
+added_large = []
+added_small = []
+for k in range(0,len(added)):
+    if added[k,2] > np.mean(added[:,2]):
+        added_large.append((added[k,0],added[k,1]))
+    else:
+        added_small.append((added[k,0],added[k,1]))
+			
+pos = nx.spring_layout(G,dim=2)
+
+nx.draw_networkx_nodes(G, pos, node_size = 1)
+
+# elarge : black edge
+nx.draw_networkx_edges(G, pos, edgelist = elarge, width = 1,alpha = 1)
+# esmall : blue dotted edge
+nx.draw_networkx_edges(G, pos, edgelist = esmall, width = 1, alpha = 0.4, edge_color='b', style = 'dotted')
+# added_large : green dotted edge
+nx.draw_networkx_edges(G, pos, edgelist = added_large, width = 1, alpha = 0.7, edge_color = 'g', style = 'dotted')
+# added_small : yellow dteed edge
+nx.draw_networkx_edges(G, pos, edgelist = added_small, width = 1, alpha = 0.3, edge_color = 'y', style = 'dotted')
+
+#nx.draw_neworkx_labels(G, pos, font_size = 10, font_family = 'sans-serif')
+
+plt.axis('off')
+plt.show()
