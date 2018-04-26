@@ -93,7 +93,7 @@ for i in range(0,len(circle414)):
 file.close()
 
 #- make ground truth cluster matrix
-clustermatrix = np.zeros((159,7))
+clustermatrix = np.zeros((160,7))
 f = open('414circle.txt','r')
 line = f.readline()
 i = 0
@@ -376,7 +376,7 @@ plt.show()
 
 ########################  NEW  ############################
 
-NWE_truncated = NWE[0:round(0.32*len(NWE))] ## because of upper 32%
+NWE_truncated = NWE[0:round(0.32*len(NWE))] ## because of upper 31%
 
 ############################################################
 NWE_index = []
@@ -405,7 +405,7 @@ for (i,j) in G.edges:
 
 # adjacency matrix to csv file
 #np.savetxt("v5_weighted_adj.csv",weighted_adj,fmt = '%d',delimiter = ",")
-np.savetxt("NNEW_32%edge_added_adj.csv",added_edge_adj,fmt = '%d' ,delimiter = ",")
+np.savetxt("Final_32%edge_added_adj.csv",added_edge_adj,fmt = '%d' ,delimiter = ",")
 
 ### plot Graph
 
