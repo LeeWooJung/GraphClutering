@@ -11,139 +11,187 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import csv
 
+"""
+    Ground Truth Alpha값 구하는 것 다시 확인
+"""
 #%% Data Preprocessing
 
-def makefile_414featurenamestxt():
+class MakeFeatureFile:
+    def __init__(self, featnames = '414.featnames', featurenamestxt = '414.featurenames.txt', featnametxt = '414featname.txt'):
+        self.featnames = featnames
+        self.featurenamestxt = featurenamestxt
+        self.featnametxt = featnametxt
+        
+    def makefile_featurenamestxt(self):
+        ego = np.genfromtxt(self.featnames, dtype = str, delimiter = "\n")
+        egofeature = []
+        
+        file = open(self.featurenamestxt,'w')
+        for i in range(0,len(ego)):
+            egofeature.extend(ego[i].split(';anonymized feature ')[0:-1])
+            if egofeature[i][-3:] == ';id':
+                egofeature[i] = egofeature[i].strip(';id')
+            egofeature[i] = egofeature[i].replace(';','_')
+            line = str(egofeature[i]) + '\n'
+            file.write(line)
+        file.close()
+        return
     
-    ego414 = np.genfromtxt('414.featnames', dtype = str, delimiter = "\n")
-    egofeature = []
-    
-    file = open("414.featurenames.txt",'w')
-    for i in range(0, len(ego414)):
-        egofeature.extend(ego414[i].split(';anonymized feature ')[0:-1])
-        if (egofeature[i][-3:] == ';id'):
-            egofeature[i] = egofeature[i].strip(';id')
-        egofeature[i] = egofeature[i].replace(';','_')
-        line = str(egofeature[i]) + '\n'
-        file.write(line)
-    file.close()
+    def makefile_featnamestxt(self):
+        ego_ = np.genfromtxt(self.featurenamestxt, dtype = str, delimiter = "\n")
+        featnames = []
+        for j in range(0,len(ego_)):
+            featnames.append((ego_[j].split())[1])
+        file = open(self.featnametxt,'w')
+        for i in range(0,len(featnames)):
+            if i == len(featnames) - 1:
+                line = str(featnames[i])
+            else:
+                line = str(featnames[i]) + '\n'
+            file.write(line)
+        file.close()
+        return
 
-def makefile_414featnamestxt():
-    
-    ego_414 = np.genfromtxt('414.featurenames.txt', dtype = str, delimiter = "\n")
-    featnames = []
-    for j in range(0,len(ego_414)):
-        featnames.append((ego_414[j].split())[1])
-    file = open("414featname.txt", 'w')
-    for i in range(0,len(featnames)):
-        if i == len(featnames) - 1:
-            line = str(featnames[i])
-        else:
-            line = str(featnames[i]) + '\n'
-        file.write(line)
-    file.close()
+#%% Make Feature Variable
+        
+class MakeFeatureNameList:
+    def __init__(self, featnametxt = '414featname.txt'):
+        self.featnametxt = featnametxt
+    def MakeFeatNamelist(self):
+        file = open(self.featnametxt,'r')
+        feat_name = file.read()
+        feat_name = feat_name.split('\n')
+        feat_name.insert(0,'nodes')
+        file.close()
+        return feat_name
 
-#%% Make Feature Name list
-    
-def MakeFeatNamelist():
-    file = open('414featnames.txt','r')
-    feat_name = file.read()
-    feat_name = feat_name.split('\n')
-    feat_name.insert(0,'nodes')
-    file.close()
-    return feat_name
+class FEATURES:
+    def __init__(self, egonum, feat_name, feat = '414.feat', egofeat = '414.egofeat'):
+        self.egonum = egonum
+        self.feat_name = feat_name
+        self.feat = feat
+        self.egofeat = egofeat
+    def EgoFeatureArray(self):
+        egofeature = list(np.genfromtxt(self.egofeat, dtype = str, delimiter = ' '))
+        egofeature.insert(0, self.egonum)
+        egofeature = [int(i) for i in egofeature]
+        egofeature = np.array(egofeature)
+        egofeature = egofeature.astype('int32')
+        return egofeature
+    def MakeFeatureArray(self):
+        features = []
+        feature = np.genfromtxt(self.feat, dtype = str, delimiter = '\n')
+        features = np.zeros((len(feature), len(self.feat_name)))
+        for i in range(0, len(feature)):
+            features[i] = feature[i].split(' ')
+        features = features.astype('int32')
+        return features
+    def MakeFeaturelist(self):
+        indexes = np.unique(self.feat_name, return_index = True)[1]
+        featurelist = [self.feat_name[index] for index in sorted(indexes)]
+        featurelist.remove('nodes')        
+        return featurelist
 
-#%% Make Feature list
-
-def MakeFeaturelist(feat_name):
-    indexes = np.unique(feat_name, return_index = True)[1]
-    featurelist = [feat_name[index] for index in sorted(indexes)]
-    featurelist.remove('nodes')
-    
-    return featurelist
-    
-
-#%% Make Features
-
-def FEATURES(feat_name):
-    features = []
-    feature = np.genfromtxt('414.feat', dtype = str, delimiter = "\n")
-    features = np.zeros((len(feature), len(feat_name)))
-    for i in range(0,len(feature)):
-        features[i] = feature[i].split(' ')
-    features = features.astype('int32')
-    return features
 
 #%% Read 414.edge : edges
-    
-def EDGE():
-    edge = np.genfromtxt('414.edges', dtype = str, delimiter = "\n")
-    edges = np.zeros((len(edge),2))
-    for j in range(0,len(edge)):
-        edges[j] = edge[j].split(' ')
-    edges = edges.astype('int32')
-    return edges
 
-#%% Make Circle File
+class ReadEdge:
+    def __init__(self, nodes, egoedges = '414.edges'):
+        self.nodes = nodes
+        self.egoedges = egoedges
+    def EDGE(self):
+        ego = self.nodes[0]
+        ego_neighbor = np.zeros((len(self.nodes)-1, 2))
+        for i in range(1, len(self.nodes)):
+            ego_neighbor[i-1] = [ego, self.nodes[i]]
+        edge = np.genfromtxt(self.egoedges, dtype = str, delimiter = "\n")
+        edges = np.zeros((len(edge),2))
+        for i in range(0,len(edge)):
+            edges[i] = edge[i].split(' ')
+        edges = edges.astype('int32')
+        edges = np.vstack((ego_neighbor,edges))
+        return edges
 
-def make_circlefile(nodes):
+#%% Make Graph
+
+class MakeGraph:
     
-    circle414 = np.genfromtxt('414.circles', dtype = str, delimiter = "\n")
-    cluster = []
-    cluster_ele = []
-    cluster_total = []
-    outlier = np.zeros((1,len(nodes)))
+    def __init__(self, G, nodes, attributes, edges):
+        self.G = G
+        self.nodes = nodes
+        self.attributes = attributes
+        self.edges = edges
+        
+    def Add_Nodes(self):
+        for i in range(0,len(self.nodes)):
+            (self.G).add_node(self.nodes[i], attr = self.attributes[i])
+        return self.G
     
-    file = open('414circle.txt','w')
-    for i in range(0,len(circle414)):
-        cluster.append(circle414[i].split('\t')[0][-1])
-        for j in range(1,len(circle414[i].split('\t'))):
-            cluster_ele.append(circle414[i].split('\t')[j])
-            cluster_total.append(circle414[i].split('\t')[j])
-        for k in range(0,len(cluster_ele)):
-            if k == len(cluster_ele)-1:
-                file.write(cluster_ele[k] + '\n')
-            else:
-                file.write(cluster_ele[k] + ' ')
-                
+    def Add_Edges(self):
+        (self.G).add_edges_from(self.edges)
+        return self.G
+        
+    
+#%% Ground Truth Clutser Parameter
+
+class GroundTruthCluster:
+    
+    def __init__(self, nodes, numofnodes = 1, numofclusters = 1,
+                 egocircle = '414.circles', egocircletxt = '414circle.txt',
+                 originalcluster = 'original_cluster.csv'):
+        
+        self.nodes = nodes
+        self.numofnodes = numofnodes
+        self.numofclusters = numofclusters
+        self.egocircle = egocircle
+        self.egocircletxt = egocircletxt
+        self.originalcluster = originalcluster
+            
+    def MakeCircleFile(self):
+        
+        circle = np.genfromtxt(self.egocircle, dtype = str, delimiter = '\n')
+        ego = self.nodes[0]
+        cluster = []
         cluster_ele = []
-    file.close()
+        cluster_total = []
+        outlier = np.zeros((1, len(self.nodes)))
+        
+        file = open(self.egocircletxt,'w')
+        for i in range(0,len(circle)):
+            cluster.append(circle[i].split('\t')[0][-1])
+            cluster_ele.append(str(ego))
+            cluster_total.append(str(ego))
+            for j in range(1,len(circle[i].split('\t'))):
+                cluster_ele.append(circle[i].split('\t')[j])
+                cluster_total.append(circle[i].split('\t')[j])
+            for k in range(0,len(cluster_ele)):
+                if k == len(cluster_ele)-1:
+                    file.write(cluster_ele[k] + '\n')
+                else:
+                    file.write(cluster_ele[k] + ' ')
+            cluster_ele = []
+        file.close()
+        
+        return cluster, cluster_total, outlier
     
-    return cluster, cluster_total, outlier
-
-#%% Make Cluster Matrix
-
-def MakeClusterMatrix(NumOfNodes, NumOfClusters):
-    clustermatrix = np.zeros((NumOfNodes, NumOfClusters))
-    f = open('414circle.txt','r')
-    line = f.readline()
-    i = 0
-    while line:
-        line = line.split(' ')
-        line[len(line)-1] = line[len(line)-1][:-1]
-        for j in range(0,len(line)):
-            clustermatrix[np.where(nodes == int(line[j]))[0][0],i] += 1
-        line = f.readline()
-        i = i+1
-    np.savetxt('original_cluster.csv', clustermatrix, fmt = '%d', delimiter = ',')
-    f.close()
-    return clustermatrix
-
-#%% Add nodes & nodes' attributes AND edges to Graph
-
-def Add_Nodes(G, nodes, attributes):
-    for i in range(0,len(nodes)):
-        G.add_node(nodes[i], attr = attributes[i])
-    return G
-
-def Add_Edges(G, edges):
-    G.add_edges_from(edges)
+    def MakeClusterMatrix(self):
+        
+        clustermatrix = np.zeros((self.numofnodes, self.numofclusters))
+        file = open(self.egocircletxt,'r')
+        line = file.readline()
+        i = 0
+        while line:
+            line = line.split(' ')
+            line[len(line)-1] = line[len(line)-1][:-1]
+            for j in range(0,len(line)):
+                clustermatrix[np.where(self.nodes == int(line[j]))[0][0],i] += 1
+            line = file.readline()
+            i += 1
+        np.savetxt(self.originalcluster, clustermatrix, fmt = '%d', delimiter = ',')
+        file.close()
+        return clustermatrix
     
-    return G
-
-#%% Find Ground Truth Beta Value
-    
-def FindGroundTruth(cluster_total, outlier, nodes):
+def GroundTruthAlphaBeta(cluster_total, outlier, nodes):
     # ground truth alpha value
     alpha = len(cluster_total)/len(nodes) - 1
     
@@ -163,35 +211,60 @@ def MakeAdjacencyMatrix(nodes, edges_of_G):
         original_adj[np.where(nodes == j)[0][0], np.where(nodes == i)[0][0]] += 1
     return original_adj
 
-#%% Find what detailed features that have more than 90% jaccard similarity
-
-def AlmostSameIndex(features):
-    simindex = np.zeros((2,1))
-    for i in range(1, len(features[0])-1):
-        for j in range(i+1, len(features[0])):
-            
-            M01 = 0
-            M10 = 0
-            M11 = 0
-            
-            for k in range(0,len(features[:,i])):
-                if features[:,i][k] == 0 and features[:,j][k] == 1:
-                    M01 += 1
-                elif features[:,i][k] == 1 and features[:,j][k] == 0:
-                    M10 += 1
-                elif features[:,i][k] == 1 and features[:,j][k] == 1:
-                    M11 += 1
-            sim = M11 / (M01 + M10 + M11)
-            if sim > 0.9:
-                string = feat_name[i] + " is similar with " + feat_name[j] + " and feature indexes are " + str(i) + "," + str(j) + " and number of features is "
-                value1 = feat_name.count(feat_name[i])
-                value2 = feat_name.count(feat_name[j])
-                PrintOut(string, value1, value2)
+#%% Calculate Jaccrad Similarity of node pairs which have an edge and don't have an edge
+    
+class JaccardSimilarity:
+    def __init__(self,features,feat_name):
+        self.features = features
+        self.feat_name = feat_name
+    def FindVerySimilarIndex(self):
+        simindex = np.zeros((2,1))
+        for i in range(1, len(self.features[0])-1):
+            for j in range(i+1, len(self.features[0])):
                 
-                simindex = np.c_[simindex, np.array([i,j])]
-    return simindex
-
-#%% Pop one column since two columns are redundant
+                M01 = 0
+                M10 = 0
+                M11 = 0
+                
+                for k in range(0,len(self.features[:,i])):
+                    if self.features[:,i][k] == 0 and self.features[:,j][k] == 1:
+                        M01 += 1
+                    elif self.features[:,i][k] == 1 and self.features[:,j][k] == 0:
+                        M10 += 1
+                    elif self.features[:,i][k] == 1 and self.features[:,j][k] == 1:
+                        M11 += 1
+                sim = M11 / (M01 + M10 + M11)
+                if sim > 0.9:
+                    string = self.feat_name[i] + " is similar with " + self.feat_name[j] + " and feature indexes are " + str(i) + "," + str(j) + " and number of features is "
+                    value1 = (self.feat_name).count(feat_name[i])
+                    value2 = (self.feat_name).count(feat_name[j])
+                    PrintOut(string, value1, value2)
+                    
+                    simindex = np.c_[simindex, np.array([i,j])]
+        return simindex
+    
+    def CalculateJaccardSimilarity(self, edges_of_G, nodes):
+        edges = list(edges_of_G)
+        onlyEdge = np.zeros((1,len(self.features[0])-1))
+        whole = np.zeros((1,len(self.features[0])-1))
+        
+        for n1_index in range(0,len(nodes)):
+            for n2_index in range(n1_index + 1, len(nodes)):
+                for k in range(1, len(self.feat_name)):
+                    if self.features[n1_index][k] == 1 and self.features[n2_index][k] == 1:
+                        whole[0][k-1] += 1
+        
+        for i in range(len(edges)):
+            N1 = edges[i][0]
+            N2 = edges[i][1]
+            n1_index = int(np.where(nodes == N1)[0])
+            n2_index = int(np.where(nodes == N2)[0])
+            
+            for k in range(1,len(self.feat_name)):
+                if self.features[n1_index][k] == 1 and self.features[n2_index][k] == 1:
+                    onlyEdge[0][k-1] += 1
+        return onlyEdge, whole
+        
     
 def RemoveRedundantFeature(feat_name, featurlist, features, simindex):
     
@@ -212,36 +285,6 @@ def RemoveRedundantFeature(feat_name, featurlist, features, simindex):
         features = np.c_[features[:,:int(simindex[1,i])],features[:,int(simindex[1,i])+1:]]
     
     return features
-
-#%% Calculate Jaccard Similarity
-
-def Cal_JaccardSimilarity(edges_of_G, features, nodes, feat_name):
-    
-    edges = list(edges_of_G)
-    #similarity = np.zeros((len(edges), 1+len(features[0])))
-    #nodeC2 = int(len(nodes)*(len(nodes)-1)/2)
-    #whole_similarity = np.zeros((nodeC2, 1+len(features[0])))
-    
-    onlyEdge = np.zeros((1,len(features[0])-1))
-    whole = np.zeros((1,len(features[0])-1))
-    
-    for n1_index in range(0,len(nodes)):
-        for n2_index in range(n1_index + 1, len(nodes)):
-            for k in range(1,len(feat_name)):
-                if features[n1_index][k] == 1 and features[n2_index][k] == 1:
-                    whole[0][k-1] += 1
-                    
-    for i in range(len(edges)):
-        N1 = edges[i][0]
-        N2 = edges[i][1]
-        n1_index = int(np.where(nodes == N1)[0])
-        n2_index = int(np.where(nodes == N2)[0])
-        
-        for k in range(1,len(feat_name)):
-            if features[n1_index][k] == 1 and features[n2_index][k] == 1:
-                onlyEdge[0][k-1] += 1
-                
-    return onlyEdge, whole
 
 #%% Calculate Ratio of similarity
     
@@ -461,52 +504,90 @@ def PrintOut(string, *args):
 #%% Main Function   
 if __name__ == "__main__":
     
-    ## Data PreProcessing
-    makefile_414featurenamestxt()
-    makefile_414featnamestxt()
+    ################################# Data PreProcessing #################################
     
-        #- make feat_name list : feat_name
-    feat_name = MakeFeatNamelist()    
-        #- features : node no. , node attribute to array
-    features = FEATURES(feat_name)    
-        #- read 414.edge : edges
-    edges = EDGE()
+    mff = MakeFeatureFile('414.featnames','414.featurenames.txt','414featname.txt')
+    mff.makefile_featurenamestxt()
+    mff.makefile_featnamestxt()
     
-    ## make graph using NetworkX
+    #- make feat_name list : feat_name
+    mfv = MakeFeatureNameList('414featname.txt')
+    feat_name = mfv.MakeFeatNamelist() 
+    
+    #- features : node no. , node attribute to array
+    ego = FEATURES(egonum = 414, feat_name = feat_name, feat = '414.feat', egofeat = '414.egofeat')
+    egofeature = ego.EgoFeatureArray()
+    f = FEATURES(egonum = 414, feat_name = feat_name, feat = '414.feat', egofeat = '414.egofeat')
+    features = f.MakeFeatureArray()
+    features = np.vstack((egofeature, features))
+    
+    #######################################################################################
+    
+    ############################## Make Graph using NetworkX ##############################
+    
     G = nx.Graph()
     nodes = features[:,0]
-    attributes = features[:,1:]    
-        #- Add node & node's attributes to Graph
-    G = Add_Nodes(G, nodes, attributes)
-    G = Add_Edges(G, edges)    
-        #- Check Ground truth value of the Graph
-    cluster, cluster_total, outlier = make_circlefile(nodes)
-        #- Make Ground Truth Cluster Matrix
-    NumOfNodes = len(nodes)
-    NumOfClusters = len(cluster)
-    clustermatrix = MakeClusterMatrix(NumOfNodes, NumOfClusters)
-        #- ground truth cluster number
-    PrintOut('Ground Truth cluster number is ', NumOfClusters)
-        #- find ground truth alpha, beta value
-    alpha, beta = FindGroundTruth(cluster_total, outlier, nodes)
-    PrintOut('Ground Truth alpha value is ', alpha)
-    PrintOut('Ground Truth beta value is ', beta)
-        #- make an adjacency matrix about original graph
+    attributes = features[:,1:]
+    
+    #- read 414.edge : edges
+    re = ReadEdge(nodes, egoedges = '414.edges')
+    edges = re.EDGE()
+    
+    #- Add node & node's attributes to Graph
+    mg = MakeGraph(G, nodes, attributes, edges)
+    G = mg.Add_Nodes()
+    G = mg.Add_Edges()
+    
+    #- make an adjacency matrix about original graph
     edges_of_G = G.edges
     original_adj = MakeAdjacencyMatrix(nodes, edges_of_G)
     np.savetxt("original_adj.csv", original_adj, fmt = "%d", delimiter = ",")
     
     PrintOut('original feature length is : ', len(features[0])-1)
     
-    ## Find what detailed features that have more than 90% jaccard similarity
-    simindex = AlmostSameIndex(features)
-        #- Make Featurelist
-    featurelist = MakeFeaturelist(feat_name)
-        #- Pop one column since Simlar two columns ar redundant
+    #######################################################################################
+    
+    ########################### Ground Truth Cluster Parameter ############################
+     
+    #- Check Ground truth value of the Graph
+    gtc1 = GroundTruthCluster(nodes = nodes, egocircle = '414.circles', egocircletxt = '414circle.txt')
+    cluster, cluster_total, outlier = gtc1.MakeCircleFile()
+   
+    #- Make Ground Truth Cluster Matrix
+    NumOfNodes = len(nodes)
+    NumOfClusters = len(cluster)
+    PrintOut('Ground Truth cluster number is ', NumOfClusters)
+    gtc2 = GroundTruthCluster(nodes = nodes, numofnodes = NumOfNodes, numofclusters = NumOfClusters,
+                             egocircletxt = '414circle.txt')
+    clustermatrix = gtc2.MakeClusterMatrix()
+    
+    #- find ground truth alpha, beta value
+    alpha, beta = GroundTruthAlphaBeta(cluster_total, outlier, nodes)
+    PrintOut('Ground Truth alpha value is ', alpha)
+    PrintOut('Ground Truth beta value is ', beta)
+    
+    #######################################################################################
+    
+    ############################ Calculate Jaccard Similarity #############################
+    
+    #- Find what detailed features that have more than 90% jaccard similarity
+    js = JaccardSimilarity(features, feat_name)
+    simindex = js.FindVerySimilarIndex()
+    
+    #- Make Featurelist
+    f = FEATURES(egonum = 414, feat_name = feat_name, feat = '414.feat', egofeat = '414.egofeat')
+    featurelist = f.MakeFeaturelist()
+    
+    #- Pop one column since Simlar two columns ar redundant
     features = RemoveRedundantFeature(feat_name, featurelist, features, simindex)
     
-    ## Calculate jaccrad similarity if there's an edge    
-    onlyEdge, whole = Cal_JaccardSimilarity(edges_of_G, features, nodes, feat_name)
+    ## Calculate jaccrad similarity if there's an edge
+    js = JaccardSimilarity(features, feat_name)
+    onlyEdge, whole = js.CalculateJaccardSimilarity(edges_of_G, nodes)
+    
+    #######################################################################################
+    
+    ############################# Calculate Similarity Ratio ##############################
     
     ## What features have more simliarity if there's an edge on node pairs
         #- Calculate Ratio
